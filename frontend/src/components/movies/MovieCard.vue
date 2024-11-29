@@ -1,26 +1,32 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md overflow-hidden">
+  <div class="card h-100 shadow-sm">
     <img 
       :src="posterUrl" 
       :alt="movie.title"
-      class="w-full h-96 object-cover"
+      class="card-img-top"
+      style="height: 400px; object-fit: cover;"
     >
-    <div class="p-4">
-      <h3 class="text-xl font-semibold mb-2">{{ movie.title }}</h3>
-      <p class="text-gray-600 text-sm mb-4 line-clamp-3">
-        {{ movie.overview }}
+    <div class="card-body d-flex flex-column">
+      <h5 class="card-title">{{ movie.title }}</h5>
+      <p class="card-text text-muted mb-2">
+        {{ movie.genre }} | {{ movie.duration }} min
       </p>
-      <div class="flex justify-between items-center">
+      <p class="card-text flex-grow-1">
+        {{ truncateText(movie.overview, 150) }}
+      </p>
+      <div class="d-grid gap-2">
         <button 
           @click="navigateToDetail"
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          class="btn btn-primary"
         >
+          <i class="fas fa-info-circle me-2"></i>
           Ver Detalles
         </button>
         <button 
           @click="navigateToBooking"
-          class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          class="btn btn-success"
         >
+          <i class="fas fa-ticket-alt me-2"></i>
           Reservar
         </button>
       </div>
@@ -29,29 +35,44 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   movie: {
     type: Object,
     required: true
   }
-});
+})
 
-const router = useRouter();
+const router = useRouter()
 
 const posterUrl = computed(() => {
   return props.movie.posterPath 
     ? `https://image.tmdb.org/t/p/w500${props.movie.posterPath}`
-    : '/placeholder-movie.jpg';
-});
+    : '/placeholder-movie.jpg'
+})
+
+const truncateText = (text, length) => {
+  if (!text) return ''
+  return text.length > length ? text.substring(0, length) + '...' : text
+}
 
 const navigateToDetail = () => {
-  router.push(`/movies/${props.movie._id}`);
-};
+  router.push(`/movies/${props.movie._id}`)
+}
 
 const navigateToBooking = () => {
-  router.push(`/booking/${props.movie._id}`);
-};
+  router.push(`/booking/${props.movie._id}`)
+}
 </script>
+
+<style scoped>
+.card {
+  transition: transform 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+</style>
