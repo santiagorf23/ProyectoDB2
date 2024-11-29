@@ -25,24 +25,16 @@ Desarrollar un sistema de gestión de inventario y registro de usuarios para una
 ---
 
 ## 🚀 **Alcance**  
-Este sistema permitirá:  
-🎬 A los **administradores** gestionar películas, horarios y asientos disponibles.  
-🎟️ A los **usuarios** registrarse, consultar películas, comprar entradas y visualizar su historial de compras.  
+Este sistema permitirá a los administradores gestionar eficientemente las
+películas, horarios, y asientos disponibles, mientras que los usuarios podrán registrarse,
+ver películas, comprar entradas y ver su historial de compras.
 
 ---
 
 ## ✅ **Requerimientos Funcionales**  
 1. 📋 Registro de usuarios con nombre, correo electrónico, historial de compras y preferencias.  
-2. 🎞️ Gestión de inventario de películas:  
-   - Nombre  
-   - Género  
-   - Duración  
-   - Horarios  
-   - Disponibilidad de entradas  
-3. 💳 Compra de entradas con:  
-   - Consulta de disponibilidad en tiempo real  
-   - Realización de pagos  
-   - Generación de recibos  
+2. 🎞️ Gestión de inventario de películas.
+3. 💳 Compra de entradas.
 4. 🪑 Actualización en tiempo real del inventario de asientos por película y función.  
 
 ---
@@ -58,9 +50,10 @@ Este sistema permitirá:
 
 ### **Modelo de Base de Datos**  
 MongoDB será utilizado para almacenar documentos JSON que representen las entidades principales:  
-- 👤 **Usuarios**  
-- 🎬 **Películas**  
-- 🧾 **Transacciones**  
+-🎬 Peliculas
+-👤 Usuario
+-🧾 Reserva
+-📽️ Proyecciones
 
 ---
 
