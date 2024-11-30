@@ -1,12 +1,21 @@
 import axios from 'axios'
 
 const tmdbApi = axios.create({
-  baseURL: 'https://api.themoviedb.org/3',
+  baseURL: import.meta.env.VITE_TMDB_API_URL,
   params: {
     api_key: import.meta.env.VITE_TMDB_API_KEY,
     language: 'es-ES'
   }
 })
+
+// Agrega un interceptor para verificar las respuestas
+tmdbApi.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('Error en la petición TMDB:', error.response?.data || error)
+    return Promise.reject(error)
+  }
+)
 
 export const tmdbService = {
   // Buscar películas
