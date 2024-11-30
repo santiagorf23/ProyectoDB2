@@ -1,156 +1,106 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import { tmdbService } from '@/services/tmdb'
 
 export const useMovieStore = defineStore('movies', {
   state: () => ({
     movies: [],
-    featuredMovies: [],
     currentMovie: null,
     loading: false,
-    error: null
+    error: null,
+    nowPlayingMovies: [],
+    popularMovies: []
   }),
 
   getters: {
-    getMovieById: (state) => (id) => {
-      return state.movies.find(movie => movie._id === id)
-    },
-    
-    getFeaturedMovies: (state) => {
-      return state.featuredMovies
+    formattedMovies: (state) => {
+      return state.movies.map(movie => ({
+        id: movie.id,
+        title: movie.title,
+        overview: movie.overview,
+        posterPath: movie.poster_path,
+        backdropPath: movie.backdrop_path,
+        voteAverage: movie.vote_average,
+        releaseDate: movie.release_date,
+        genre: movie.genre_ids?.join(', ') || 'Sin género'
+      }))
     },
 
-    getMoviesByGenre: (state) => (genre) => {
-      return state.movies.filter(movie => movie.genre === genre)
+    movieById: (state) => (id) => {
+      return state.movies.find(movie => movie.id === parseInt(id))
     }
   },
 
   actions: {
-    // Obtener todas las películas
     async fetchMovies() {
-      this.loading = true
-      this.error = null
       try {
-        const response = await axios.get('http://localhost:5000/api/movies')
-        this.movies = response.data
-        return response.data
+        this.loading = true
+        this.error = null
+        
+        const [nowPlaying, popular] = await Promise.all([
+          tmdbService.getNowPlaying(),
+          tmdbService.getPopularMovies()
+        ])
+        
+        this.nowPlayingMovies = nowPlaying
+          .filter(movie => movie.poster_path)
+          .slice(0, 6)
+        
+        this.popularMovies = popular
+          .filter(movie => movie.poster_path)
+          .slice(0, 6)
+        
+        // Combinar y eliminar duplicados
+        const allMovies = [...nowPlaying, ...popular]
+        const uniqueMovies = Array.from(
+          new Map(allMovies.map(movie => [movie.id, movie])).values()
+        ).filter(movie => movie.poster_path)
+        
+        this.movies = uniqueMovies
       } catch (error) {
-        this.error = error.response?.data?.message || 'Error al cargar las películas'
-        throw new Error(this.error)
+        console.error('Error al cargar películas:', error)
+        this.error = 'Error al cargar las películas. Por favor, intente más tarde.'
+        throw error
       } finally {
         this.loading = false
       }
     },
 
-    // Obtener películas destacadas
-    async fetchFeaturedMovies() {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await axios.get('http://localhost:5000/api/movies/featured')
-        this.featuredMovies = response.data
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al cargar películas destacadas'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Obtener una película por ID
     async fetchMovieById(id) {
-      this.loading = true
-      this.error = null
       try {
-        const response = await axios.get(`http://localhost:5000/api/movies/${id}`)
-        this.currentMovie = response.data
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al cargar la película'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Crear una nueva película (admin)
-    async createMovie(movieData) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await axios.post('http://localhost:5000/api/movies', movieData)
-        this.movies.push(response.data)
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al crear la película'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
-    },
-
-    // Actualizar una película (admin)
-    async updateMovie(id, movieData) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await axios.put(`http://localhost:5000/api/movies/${id}`, movieData)
-        const index = this.movies.findIndex(movie => movie._id === id)
-        if (index !== -1) {
-          this.movies[index] = response.data
+        this.loading = true
+        this.error = null
+        
+        const movieDetails = await tmdbService.getMovieDetails(id)
+        this.currentMovie = {
+          ...movieDetails,
+          formattedGenres: movieDetails.genres?.map(g => g.name).join(', ') || 'Sin género',
+          director: movieDetails.credits?.crew?.find(c => c.job === 'Director')?.name || 'No disponible',
+          cast: movieDetails.credits?.cast?.slice(0, 5)?.map(a => a.name).join(', ') || 'No disponible',
+          trailerUrl: movieDetails.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube')
+            ? `https://www.youtube.com/watch?v=${movieDetails.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube').key}`
+            : null
         }
-        return response.data
+        
+        return this.currentMovie
       } catch (error) {
-        this.error = error.response?.data?.message || 'Error al actualizar la película'
-        throw new Error(this.error)
+        console.error('Error al cargar detalles de la película:', error)
+        this.error = 'Error al cargar los detalles de la película. Por favor, intente más tarde.'
+        throw error
       } finally {
         this.loading = false
       }
     },
 
-    // Eliminar una película (admin)
-    async deleteMovie(id) {
-      this.loading = true
-      this.error = null
-      try {
-        await axios.delete(`http://localhost:5000/api/movies/${id}`)
-        this.movies = this.movies.filter(movie => movie._id !== id)
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al eliminar la película'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
+    clearCurrentMovie() {
+      this.currentMovie = null
     },
 
-    // Buscar películas
-    async searchMovies(query) {
-      this.loading = true
-      this.error = null
-      try {
-        const response = await axios.get(`http://localhost:5000/api/movies/search?q=${query}`)
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al buscar películas'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
+    setError(message) {
+      this.error = message
     },
 
-    // Filtrar películas por género
-    async filterMoviesByGenre(genre) {
-      this.loading = true
+    clearError() {
       this.error = null
-      try {
-        const response = await axios.get(`http://localhost:5000/api/movies/genre/${genre}`)
-        return response.data
-      } catch (error) {
-        this.error = error.response?.data?.message || 'Error al filtrar películas'
-        throw new Error(this.error)
-      } finally {
-        this.loading = false
-      }
     }
   }
 })

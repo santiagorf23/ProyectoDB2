@@ -12,32 +12,50 @@
             </router-link>
           </div>
           <div class="col-md-6 d-none d-md-block">
-            <img src="" alt="Cinema" class="img-fluid rounded shadow">
+            <img src="/cinema-hero.jpg" alt="Cinema" class="img-fluid rounded shadow">
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Películas Destacadas -->
+    <!-- Películas en Cartelera -->
     <section class="py-5">
       <div class="container">
-        <h2 class="text-center mb-4">Películas Destacadas</h2>
+        <h2 class="text-center mb-4">En Cartelera</h2>
         <div class="row">
           <div v-if="loading" class="col-12 text-center">
             <LoadingSpinner message="Cargando películas..." />
           </div>
-          <div v-else-if="featuredMovies.length" 
-                v-for="movie in featuredMovies" 
-                :key="movie._id" 
-                class="col-md-4 mb-4">
-            <MovieCard :movie="movie" />
+          <div v-else-if="nowPlayingMovies.length" 
+               v-for="movie in nowPlayingMovies" 
+               :key="movie.id" 
+               class="col-md-4 mb-4">
+            <MovieCard :movie="formatMovieData(movie)" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Películas Populares -->
+    <section class="bg-light py-5">
+      <div class="container">
+        <h2 class="text-center mb-4">Películas Populares</h2>
+        <div class="row">
+          <div v-if="loading" class="col-12 text-center">
+            <LoadingSpinner message="Cargando películas..." />
+          </div>
+          <div v-else-if="popularMovies.length" 
+               v-for="movie in popularMovies" 
+               :key="movie.id" 
+               class="col-md-4 mb-4">
+            <MovieCard :movie="formatMovieData(movie)" />
           </div>
         </div>
       </div>
     </section>
 
     <!-- Promociones -->
-    <section class="bg-light py-5">
+    <section class="py-5">
       <div class="container">
         <h2 class="text-center mb-4">Promociones Especiales</h2>
         <div class="row g-4">
@@ -78,18 +96,41 @@
 import { ref, onMounted } from 'vue'
 import MovieCard from '@/components/movies/MovieCard.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import { useMovieStore } from '@/store/modules/movies'
+import { tmdbService } from '@/services/tmdb'
 
-const movieStore = useMovieStore()
 const loading = ref(true)
-const featuredMovies = ref([])
+const nowPlayingMovies = ref([])
+const popularMovies = ref([])
+
+const formatMovieData = (movie) => ({
+  id: movie.id,
+  title: movie.title,
+  overview: movie.overview,
+  posterPath: movie.poster_path,
+  genre: movie.genre_ids?.join(', ') || 'Sin género',
+  duration: '120',
+  voteAverage: movie.vote_average || 0
+})
 
 onMounted(async () => {
   try {
     loading.value = true
-    featuredMovies.value = await movieStore.fetchFeaturedMovies()
+    const [nowPlaying, popular] = await Promise.all([
+      tmdbService.getNowPlaying(),
+      tmdbService.getPopularMovies()
+    ])
+    
+    nowPlayingMovies.value = nowPlaying
+      .filter(movie => movie.poster_path)
+      .slice(0, 6)
+      .map(formatMovieData)
+    
+    popularMovies.value = popular
+      .filter(movie => movie.poster_path)
+      .slice(0, 6)
+      .map(formatMovieData)
   } catch (error) {
-    console.error('Error al cargar películas destacadas:', error)
+    console.error('Error al cargar películas:', error)
   } finally {
     loading.value = false
   }
@@ -99,6 +140,6 @@ onMounted(async () => {
 <style scoped>
 .hero-section {
   background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
-              url('') center/cover;
+              url('/cinema-hero.jpg') center/cover;
 }
 </style>
