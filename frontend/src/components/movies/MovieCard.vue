@@ -2,44 +2,35 @@
   <div class="card h-100 shadow-sm">
     <div class="card-img-container">
       <img 
-        :src="getPosterUrl(movie.posterPath)"
+        :src="posterUrl"
         :alt="movie.title"
         class="card-img-top"
         @error="handleImageError"
       >
+      <div class="card-rating">
+        <span class="badge bg-primary">
+          ⭐ {{ movie.voteAverage?.toFixed(1) || 'N/A' }}
+        </span>
+      </div>
     </div>
-    <div class="card-body d-flex flex-column">
-      <h5 class="card-title">{{ movie.title }}</h5>
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="text-muted">{{ movie.genre }}</span>
-        <span class="badge bg-warning text-dark">⭐ {{ movie.voteAverage.toFixed(1) }}</span>
-      </div>
-      <p class="card-text flex-grow-1">
-        {{ truncateText(movie.overview, 150) }}
+    <div class="card-body">
+      <h5 class="card-title text-truncate">{{ movie.title }}</h5>
+      <p class="card-text small text-muted">
+        {{ truncateText(movie.overview, 100) }}
       </p>
-      <div class="d-grid gap-2">
-        <button 
-          @click="navigateToDetail"
-          class="btn btn-primary"
-        >
-          <i class="fas fa-info-circle me-2"></i>
-          Ver Detalles
-        </button>
-        <button 
-          @click="navigateToBooking"
-          class="btn btn-success"
-        >
-          <i class="fas fa-ticket-alt me-2"></i>
-          Reservar
-        </button>
-      </div>
+      <router-link 
+        :to="{ name: 'MovieDetail', params: { id: movie.id }}"
+        class="btn btn-primary btn-sm"
+      >
+        Ver más
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { getTMDBImageUrl, handleImageError, truncateText } from '@/utils/helpers'
 
 const props = defineProps({
   movie: {
@@ -48,35 +39,15 @@ const props = defineProps({
   }
 })
 
-const router = useRouter()
-
-const getPosterUrl = (posterPath) => {
-  if (!posterPath) return '/placeholder-movie.jpg'
-  return `${import.meta.env.VITE_TMDB_IMAGE_URL}/w500${posterPath}`
-}
-
-const handleImageError = (event) => {
-  event.target.src = '/placeholder-movie.jpg'
-}
-
-const truncateText = (text, length) => {
-  if (!text) return ''
-  return text.length > length ? text.substring(0, length) + '...' : text
-}
-
-const navigateToDetail = () => {
-  router.push(`/movies/${props.movie.id}`)
-}
-
-const navigateToBooking = () => {
-  router.push(`/booking/${props.movie.id}`)
-}
+const posterUrl = computed(() => {
+  return getTMDBImageUrl(props.movie.posterPath, 'w500')
+})
 </script>
 
 <style scoped>
 .card-img-container {
   position: relative;
-  padding-top: 150%; /* Aspecto 2:3 para posters de películas */
+  padding-top: 150%; /* Aspect ratio 2:3 */
   overflow: hidden;
 }
 
@@ -89,14 +60,22 @@ const navigateToBooking = () => {
   object-fit: cover;
 }
 
-.card:hover {
-  transform: translateY(-5px);
-  transition: transform 0.2s ease;
+.card-rating {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
-@media (max-width: 768px) {
-  .card-img-container {
-    padding-top: 120%; /* Ajuste para móviles */
-  }
+.card-title {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.card {
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
 }
 </style>

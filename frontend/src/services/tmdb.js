@@ -22,11 +22,14 @@ export const tmdbService = {
   async searchMovies(query) {
     try {
       const response = await tmdbApi.get('/search/movie', {
-        params: { query }
+        params: {
+          query: query
+        }
       })
       return response.data.results
     } catch (error) {
-      throw new Error('Error al buscar películas en TMDB')
+      console.error('Error searching movies:', error)
+      throw error
     }
   },
 
@@ -91,6 +94,36 @@ export const tmdbService = {
       trailerUrl: tmdbMovie.videos?.results?.[0]?.key 
         ? `https://www.youtube.com/watch?v=${tmdbMovie.videos.results[0].key}`
         : null
+    }
+  },
+
+  async getTrendingMovies() {
+    try {
+      const response = await tmdbApi.get('/trending/movie/week', {
+        params: {
+          language: 'es-ES'
+        }
+      })
+      return response.data.results
+    } catch (error) {
+      console.error('Error fetching trending movies:', error)
+      throw error
+    }
+  },
+
+  async getNowPlayingMovies() {
+    try {
+      const response = await tmdbApi.get('/movie/now_playing', {
+        params: {
+          language: 'es-ES',
+          page: 1,
+          region: 'ES' // Ajusta según tu región
+        }
+      })
+      return response.data.results
+    } catch (error) {
+      console.error('Error fetching now playing movies:', error)
+      throw error
     }
   }
 }
