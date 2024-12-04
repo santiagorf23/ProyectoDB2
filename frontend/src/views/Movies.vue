@@ -25,8 +25,6 @@
       <div class="section-header">
         <h2 class="section-title">Tendencias</h2>
         <div class="filter-buttons">
-          <button class="btn btn-dark btn-sm active">Hoy</button>
-          <button class="btn btn-outline-dark btn-sm">Esta semana</button>
         </div>
       </div>
 
