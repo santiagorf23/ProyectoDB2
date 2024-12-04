@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const config = require('./config');
 
 const connectDB = async () => {
+<<<<<<< HEAD
   try {
     const options = {
       useNewUrlParser: true,
@@ -30,6 +30,18 @@ const connectDB = async () => {
     console.error('❌ Error al conectar a MongoDB:', error.message);
     process.exit(1);
   }
+=======
+    try {
+        const conn = await mongoose.connect('mongodb://localhost:27017/CinemaDB', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        console.log(`MongoDB Conectado: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`Error: ${error.message}`);
+        process.exit(1);
+    }
+>>>>>>> 82acd4eacaf8c8948ba126982f04687dd38551ea
 };
 
 module.exports = connectDB;
