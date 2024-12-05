@@ -96,6 +96,81 @@
   </div>
 </template>
 
+<script setup>
+import { ref, onMounted, computed, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useMovieStore } from '@/store/modules/movies'
+import { getTMDBImageUrl } from '@/utils/helpers'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+
+const route = useRoute()
+const router = useRouter()
+const movieStore = useMovieStore()
+const movie = ref(null)
+const loading = ref(true)
+const error = ref(null)
+
+const handleImageError = (event) => {
+  event.target.src = '/placeholder-movie.jpg'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const backdropStyle = computed(() => {
+  if (!movie.value?.backdrop_path) return {}
+  return {
+    backgroundImage: `url(${getTMDBImageUrl(movie.value.backdrop_path, 'original')})`
+  }
+})
+
+const getYoutubeEmbedUrl = (url) => {
+  if (!url) return ''
+  const videoId = url.split('v=')[1]
+  return `https://www.youtube.com/embed/${videoId}`
+}
+
+const isInTheaters = computed(() => {
+  if (!movie.value?.release_date) return false
+  const releaseDate = new Date(movie.value.release_date)
+  const today = new Date()
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(today.getDate() - 30)
+  return releaseDate >= thirtyDaysAgo && releaseDate <= today
+})
+
+const goToBooking = () => {
+  router.push({
+    name: 'Booking',
+    params: { movieId: movie.value.id }
+  })
+}
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    movie.value = await movieStore.fetchMovieById(route.params.id)
+    await nextTick(() => {
+      const backdropElement = document.querySelector('.movie-backdrop')
+      if (backdropElement && movie.value?.backdrop_path) {
+        backdropElement.style.backgroundImage = 
+          `url(${getTMDBImageUrl(movie.value.backdrop_path, 'original')})`
+      }
+    })
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
 <style scoped>
 .movie-backdrop {
   position: relative;
@@ -173,89 +248,3 @@
   border-color: #0192b7;
 }
 </style>
-
-<script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useMovieStore } from '@/store/modules/movies'
-import { getTMDBImageUrl } from '@/utils/helpers'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-
-const route = useRoute()
-const router = useRouter()
-const movieStore = useMovieStore()
-const movie = ref(null)
-const loading = ref(true)
-const error = ref(null)
-
-// Agregar método para manejar errores de imagen
-const handleImageError = (event) => {
-  event.target.src = '/placeholder-movie.jpg'
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-// Computed para el estilo del backdrop
-const backdropStyle = computed(() => {
-  if (!movie.value?.backdrop_path) return {}
-  return {
-    backgroundImage: `url(${getTMDBImageUrl(movie.value.backdrop_path, 'original')})`
-  }
-})
-
-// Agregar función para convertir URL de YouTube
-const getYoutubeEmbedUrl = (url) => {
-  if (!url) return ''
-  const videoId = url.split('v=')[1]
-  return `https://www.youtube.com/embed/${videoId}`
-}
-
-// Computed property para verificar si la película está en cartelera
-const isInTheaters = computed(() => {
-  if (!movie.value?.release_date) return false
-  
-  const releaseDate = new Date(movie.value.release_date)
-  const today = new Date()
-  
-  // Consideramos que está en cartelera si se estrenó en los últimos 30 días
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(today.getDate() - 30)
-  
-  return releaseDate >= thirtyDaysAgo && releaseDate <= today
-})
-
-// Método para navegar a la página de reserva
-const goToBooking = () => {
-  router.push({
-    name: 'Booking',
-    params: { movieId: movie.value.id }
-  })
-}
-
-onMounted(async () => {
-  try {
-    loading.value = true
-    movie.value = await movieStore.fetchMovieById(route.params.id)
-    
-    // Esperar al siguiente tick para asegurar que el elemento existe
-    await nextTick(() => {
-      const backdropElement = document.querySelector('.movie-backdrop')
-      if (backdropElement && movie.value?.backdrop_path) {
-        backdropElement.style.backgroundImage = 
-          `url(${getTMDBImageUrl(movie.value.backdrop_path, 'original')})`
-      }
-    })
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    loading.value = false
-  }
-})
-</script>

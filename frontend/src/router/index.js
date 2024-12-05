@@ -3,9 +3,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Importaciones de vistas principales
 import Home from '@/views/Home.vue'
 import Movies from '@/views/Movies.vue'
-import MovieDetail from '@/views/MovieDetail.vue' // Cambiamos a usar la vista en lugar del componente
-import NotFound from '@/views/NotFound.vue' // Importamos NotFound
-
+import MovieDetail from '@/views/MovieDetail.vue' 
+import NotFound from '@/views/NotFound.vue' 
+import CarteleraView from '@/views/CarteleraView.vue'
 // Importaciones de componentes de autenticación
 import Login from '@/components/auth/LoginForm.vue'
 import Register from '@/components/auth/RegisterForm.vue'
@@ -20,6 +20,11 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login
+  },
+  {
+    path: '/cartelera',
+    name: 'Cartelera',
+    component: CarteleraView
   },
   {
     path: '/register',
