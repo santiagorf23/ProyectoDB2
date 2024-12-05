@@ -1,173 +1,203 @@
 <template>
-  <div class="container py-5">
-    <div class="row">
-      <!-- Detalles de la película -->
-      <div class="col-md-4 mb-4">
-        <div class="card">
-          <img 
-            :src="movie?.posterUrl" 
-            :alt="movie?.title"
-            class="card-img-top"
-          >
-          <div class="card-body">
-            <h5 class="card-title">{{ movie?.title }}</h5>
-            <p class="card-text">{{ movie?.overview }}</p>
-            <div class="d-flex justify-content-between">
-              <span>Duración: {{ movie?.duration }} min</span>
-              <span>Género: {{ movie?.genre }}</span>
+  <div class="container">
+    <h1>Reservar Entradas</h1>
+    
+    <div v-if="loading" class="text-center">
+      <LoadingSpinner message="Cargando detalles de la película..." />
+    </div>
+
+    <div v-else-if="error" class="alert alert-danger">
+      {{ error }}
+    </div>
+
+    <div v-else class="movie-details">
+      <div class="movie-info">
+        <h2>{{ movie.title }}</h2>
+        <img :src="getTMDBImageUrl(movie.poster_path, 'w500')" alt="Poster" class="img-fluid" />
+        
+        <p><strong>Género:</strong> {{ movie.genres.join(', ') }}</p>
+        <p><strong>Duración:</strong> {{ movie.runtime }} min</p>
+      </div>
+
+      <div class="booking-info">
+        <h3>Selecciona tus Asientos</h3>
+        <div class="seat-selection">
+          <div class="screen">Pantalla</div>
+          <div class="seats">
+            <div v-for="row in rows" :key="row" class="seat-row">
+              <div v-for="seat in getSeatsForRow(row)" :key="seat.id" class="seat">
+                <input type="checkbox" 
+                       :disabled="!seat.isAvailable" 
+                       v-model="seat.isSelected" 
+                       @change="updateSelectedSeats(seat.id)" />
+                <label :class="{ 'occupied': !seat.isAvailable }">
+                  <i class="fas fa-chair"></i> Asiento {{ seat.id }}
+                </label>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Formulario de reserva -->
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title mb-4">Reserva tu entrada</h5>
+        <h3>Funciones Disponibles</h3>
+        <select v-model="selectedFunction" class="form-select">
+          <option disabled value="">Selecciona una función</option>
+          <option v-for="(functionTime, index) in functions" :key="index" :value="functionTime">
+            {{ functionTime }} - {{ availableSeats }} asientos disponibles
+          </option>
+        </select>
 
-            <!-- Selector de función -->
-            <div class="mb-4">
-              <label class="form-label">Selecciona la función:</label>
-              <select 
-                v-model="selectedScreeningId"
-                class="form-select"
-                :disabled="loading"
-              >
-                <option value="">Selecciona una función</option>
-                <option 
-                  v-for="screening in screenings"
-                  :key="screening._id"
-                  :value="screening._id"
-                >
-                  {{ formatDate(screening.datetime) }} - Sala {{ screening.room }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Selector de asientos -->
-            <div v-if="selectedScreeningId" class="mb-4">
-              <label class="form-label">Selecciona tus asientos:</label>
-              <div class="seat-grid">
-                <!-- Componente de selección de asientos -->
-                <SeatSelector 
-                  :seats="selectedScreening?.seats || []"
-                  v-model="selectedSeats"
-                />
-              </div>
-            </div>
-
-            <!-- Resumen de la compra -->
-            <div v-if="selectedSeats.length" class="card bg-light mb-4">
-              <div class="card-body">
-                <h6 class="card-title">Resumen de tu reserva</h6>
-                <div class="d-flex justify-content-between mb-2">
-                  <span>Película:</span>
-                  <span>{{ movie?.title }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                  <span>Función:</span>
-                  <span>{{ formatDate(selectedScreening?.datetime) }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                  <span>Asientos:</span>
-                  <span>{{ selectedSeats.join(', ') }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                  <span>Precio por entrada:</span>
-                  <span>${{ selectedScreening?.price }}</span>
-                </div>
-                <div class="d-flex justify-content-between fw-bold">
-                  <span>Total:</span>
-                  <span>${{ totalPrice }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Botón de confirmación -->
-            <button 
-              class="btn btn-primary w-100"
-              :disabled="!canConfirm || loading"
-              @click="handleBooking"
-            >
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              {{ loading ? 'Procesando...' : 'Confirmar Reserva' }}
-            </button>
-          </div>
+        <div>
+          <label for="ticketCount">Cantidad de Boletas:</label>
+          <input type="number" v-model="ticketCount" min="1" max="availableSeats" />
         </div>
+
+        <button @click="createBooking" class="btn btn-success">Confirmar Reserva</button>
       </div>
+    </div>
+
+    <div v-if="successMessage" class="alert alert-success mt-3">
+      {{ successMessage }}
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import SeatSelector from '@/components/booking/SeatSelector.vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useMovieStore } from '@/store/modules/movies'
+import { useBookingStore } from '@/store/modules/bookings'
+import { getTMDBImageUrl } from '@/utils/helpers'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const route = useRoute()
-const router = useRouter()
+const movieStore = useMovieStore()
+const bookingStore = useBookingStore()
 
-const loading = ref(false)
 const movie = ref(null)
-const screenings = ref([])
-const selectedScreeningId = ref('')
-const selectedSeats = ref([])
+const loading = ref(true)
+const error = ref(null)
+const functions = ref(['10:00 AM', '1:00 PM', '4:00 PM', '7:00 PM', '10:00 PM', '12:00 AM'])
+const selectedFunction = ref('')
+const ticketCount = ref(1)
+const successMessage = ref('')
 
-const selectedScreening = computed(() => 
-  screenings.value.find(s => s._id === selectedScreeningId.value)
-)
-
-const totalPrice = computed(() => 
-  selectedScreening.value?.price * selectedSeats.value.length || 0
-)
-
-const canConfirm = computed(() => 
-  selectedScreeningId.value && selectedSeats.value.length > 0
-)
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleString()
-}
-
-const handleBooking = async () => {
-  try {
-    loading.value = true
-    // Aquí iría la lógica de reserva
-    await bookingStore.createBooking({
-      screeningId: selectedScreeningId.value,
-      seats: selectedSeats.value,
-      totalPrice: totalPrice.value
-    })
-    router.push('/booking/confirmation')
-  } catch (error) {
-    console.error('Error al procesar la reserva:', error)
-  } finally {
-    loading.value = false
-  }
+// Definición de filas y asientos
+const rows = Array.from({ length: 10 }, (_, index) => index + 1) // 10 filas
+const getSeatsForRow = (row) => {
+  const start = (row - 1) * 5
+  return bookingStore.seats.slice(start, start + 5) // 5 asientos por fila
 }
 
 onMounted(async () => {
   try {
     loading.value = true
-    const movieId = route.params.movieId
-    // Aquí cargarías los datos de la película y las funciones disponibles
-    // movie.value = await movieStore.fetchMovie(movieId)
-    // screenings.value = await screeningStore.fetchScreenings(movieId)
-  } catch (error) {
-    console.error('Error al cargar datos:', error)
+    movie.value = await movieStore.fetchMovieById(route.params.movieId)
+  } catch (err) {
+    error.value = 'Error al cargar los detalles de la película.'
+    console.error(err)
   } finally {
     loading.value = false
   }
 })
+
+const updateSelectedSeats = (seatId) => {
+  const seat = bookingStore.seats[seatId - 1]
+  if (seat) {
+    seat.isSelected = !seat.isSelected
+  }
+}
+
+const createBooking = async () => {
+  const selectedSeats = bookingStore.seats
+    .filter(seat => seat.isSelected)
+    .map(seat => seat.id)
+
+  const bookingData = {
+    movieId: movie.value.id,
+    functionTime: selectedFunction.value,
+    ticketCount: ticketCount.value,
+    selectedSeats: selectedSeats
+  }
+  
+  await bookingStore.createBooking(bookingData)
+  
+  // Mostrar mensaje de éxito
+  successMessage.value = 'Reserva creada con éxito.'
+}
 </script>
 
 <style scoped>
-.seat-grid {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 0.5rem;
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.movie-details {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.movie-info {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.movie-info img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.booking-info {
+  flex: 2;
+}
+
+.seat-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.screen {
+  width: 100%;
+  height: 50px;
+  background-color: #000;
+  color: #fff;
+  text-align: center;
+  line-height: 50px;
+  margin-bottom: 20px;
+}
+
+.seats {
+  display: flex;
+  flex-direction: column;
+}
+
+.seat-row {
+  display: flex;
+  justify-content: center;
+  margin: 5px 0;
+}
+
+.seat {
+  margin: 0 10px;
+  text-align: center;
+}
+
+.occupied {
+  text-decoration: line-through;
+  color: red;
+}
+
+.seat label {
+  display: flex;
+  align-items: center;
+}
+
+.seat label i {
+  margin-right: 5px; /* Espacio entre el icono y el texto */
 }
 </style>
