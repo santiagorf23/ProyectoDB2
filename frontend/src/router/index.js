@@ -38,11 +38,9 @@ const routes = [
     props: true // Permite pasar params como props
   },
   {
-    path: '/booking/:id',
+    path: '/booking/:movieId',
     name: 'Booking',
-    component: () => import('@/views/Booking.vue'),
-    props: true,
-    meta: { requiresAuth: true } // Opcional: para proteger la ruta
+    component: () => import('@/views/Booking.vue')
   },
   // Ruta para manejar 404
   {

@@ -77,9 +77,12 @@ export const useMovieStore = defineStore('movies', {
           formattedGenres: movieDetails.genres?.map(g => g.name).join(', ') || 'Sin género',
           director: movieDetails.credits?.crew?.find(c => c.job === 'Director')?.name || 'No disponible',
           cast: movieDetails.credits?.cast?.slice(0, 5)?.map(a => a.name).join(', ') || 'No disponible',
-          trailerUrl: movieDetails.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube')
-            ? `https://www.youtube.com/watch?v=${movieDetails.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube').key}`
-            : null
+          trailerUrl: movieDetails.videos?.results?.find(v => 
+            v.type === 'Trailer' && 
+            v.site === 'YouTube'
+          )?.key ? `https://www.youtube.com/watch?v=${movieDetails.videos.results.find(
+            v => v.type === 'Trailer' && v.site === 'YouTube'
+          ).key}` : null
         }
         
         return this.currentMovie
